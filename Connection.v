@@ -26,6 +26,14 @@ Tactic Notation "solve" "by" "inversion" :=
 
 Module Connection.
 
+  (* A line in an HTTP request can be:
+     (1) Req_InitialMessage: the first line, for example "GET / HTTP/1.1".
+     (2) Req_HeaderLine: a common header line delimited by a colon.
+     (3) Req_BrokenLine: if a value in a Req_HeaderLine is too long,
+                         it can be broken in to multiple lines.
+                         This represents a broken line: in a well formed
+                         request, it must follows a Req_HeaderLine.
+   *)
   Inductive HttpRequestLine : Type :=
   | Req_InitialMessage : string -> HttpRequestLine
   | Req_HeaderLine : string -> HttpRequestLine
@@ -33,6 +41,10 @@ Module Connection.
 
   Definition HttpRequest : Type := list HttpRequestLine.
 
+  (* The `well_formed_request` we defined here is kind of weak,
+     it actually represents the remaining part of a well formed HTTP request
+     header (its first several lines have been processed by the server.
+  *)
   Inductive well_formed_request: HttpRequest -> Prop :=
   | wf_empty : well_formed_request nil
   | wf_cons_header_line : forall s req, well_formed_request req ->
@@ -49,6 +61,9 @@ Module Connection.
     induction H; inversion Heqreq'; subst; auto.
   Qed.
 
+  (* A complete HTTP request must start with a `Req_InitialMessage`,
+     followed by nothing or `Req_HeaderLine` and a list of request lines.
+  *)
   Inductive complete_request : HttpRequest -> Prop :=
   | cr_only_initial: forall s,
       complete_request (Req_InitialMessage s :: nil)
@@ -116,6 +131,10 @@ Module Connection.
       response_header res ->
       response_header (Res_HeaderLine s :: res).
 
+  (* A well formed response must be some header lines followed by some body lines.
+     That means, header lines can not be between body lines,
+     or the other way around. 
+   *)
   Definition well_formed_response (res: HttpResponse) : Prop := response_header res.
 
   Lemma nil_neq_app_cons : forall { A: Type } ( x : A ) l1 l2,
@@ -170,7 +189,9 @@ Module Connection.
   | UrlReceived 
   | HeaderPartReceived 
   | HeadersReceived 
-  | HeadersProcessed 
+  | HeadersProcessed
+  (* The behavior of the following states, until `FooterPartReceived`,
+     have not been formalized yet. *)
   | ContinueSending 
   | ContinueSent 
   | BodyReceived 
@@ -180,6 +201,8 @@ Module Connection.
   | HeadersSent 
   | NormalBodyReady
   | NormalBodyUnready
+  (* The behavior of the following states, until `FootersSent`,
+     have not been formalized yet. *)
   | ChunkedBodyReady
   | ChunkedBodyUnready 
   | BodySent
@@ -187,11 +210,23 @@ Module Connection.
   | FootersSent
   | Closed.
 
+  (* `has_state req1 req2 state res1 res2`
+     means that it can happen that a connection at state `state`
+     has processed `req2`, and has requests `req1` pending for processing,
+     and it has sent `res2`, and has responses `res1` waiting to be sent.
+     Right now, the part related to handling chunked data has not been
+     modeled here yet. 
+  *)
   Inductive has_state : HttpRequest -> HttpRequest ->
                         State -> HttpResponse -> HttpResponse -> Prop :=
   | S_Init: forall req,
       complete_request req ->
       has_state req nil Init nil nil
+  | S_InitClose: forall req,
+  (* This is not exactly what happened in the web server,
+     but this makes the proof easier. *)
+      ~(complete_request (rev req)) ->
+      has_state nil req Closed nil nil
   | S_UrlReceived: forall s req,
       has_state (Req_InitialMessage s :: req) nil Init nil nil ->
       has_state req (Req_InitialMessage s :: nil) UrlReceived nil nil
@@ -275,7 +310,7 @@ Module Connection.
     - assert (exists state', has_state (req1 ++ req2) (a::req3) state' res1 res2).
       { eapply progress_req. apply H. }
       destruct H0. apply IHreq1 in H0.
-      simpl. rewrite <- app_assoc. simpl. assumption.
+      simpl. rewrite <- app_assoc. simpl. assumption. 
   Qed.
         
   Lemma progress_req_to_nil: forall req res1 res2,
@@ -364,10 +399,12 @@ Module Connection.
   Lemma good_req_will_be_received : forall req,
       complete_request req ->
       has_state nil (rev req) FootersReceived nil nil.
-  Proof.
-    intros. apply S_Init in H.
+  Proof. 
+    intros. assert (Hcr: complete_request req); auto.
+    apply S_Init in H. 
     apply progress_req_to_nil in H. destruct H.
     induction x; inversion H; subst; eauto;
+      try (rewrite rev_involutive in H0; contradiction);
       try (repeat constructor);
       solve [exfalso; eapply complete_request_not_empty; eauto
             | try solve by inversion 7].
