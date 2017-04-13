@@ -5,6 +5,7 @@ Require Import Utility.
 Require Import InvTactics.
 Require Import HttpRequest.
 Require Import HttpResponse.
+Require Import State.
 
 (** What it means for an HTTP request and an HTTP response to be matched.
     Right now we only ask them both to be well formed. **)
@@ -13,34 +14,6 @@ Inductive request_response_matched (req: HttpRequest) (res: HttpResponse) : Prop
 | wf_match: complete_request req ->
             well_formed_response res ->
             request_response_matched req res.
-
-(** All the states of a connection. **)
-
-Inductive State : Type :=
-| Init 
-| UrlReceived 
-| HeaderPartReceived 
-| HeadersReceived 
-| HeadersProcessed
-(* The behavior of the following states, until `FooterPartReceived`,
-     have not been formalized yet. *)
-| ContinueSending 
-| ContinueSent 
-| BodyReceived 
-| FooterPartReceived
-| FootersReceived 
-| HeadersSending 
-| HeadersSent 
-| NormalBodyReady
-| NormalBodyUnready
-(* The behavior of the following states, until `FootersSent`,
-     have not been formalized yet. *)
-| ChunkedBodyReady
-| ChunkedBodyUnready 
-| BodySent
-| FootersSending
-| FootersSent
-| Closed.
 
 (** `has_state req1 req2 state res1 res2`
      means that it can happen that a connection at state `state`

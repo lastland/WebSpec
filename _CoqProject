@@ -3,4 +3,5 @@ Utility.v
 InvTactics.v
 HttpRequest.v
 HttpResponse.v
-Connection.v
+State.v
+HasState.v
