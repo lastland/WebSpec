@@ -60,11 +60,11 @@ Inductive has_state : HttpRequest -> HttpRequest ->
     has_state nil req FootersReceived nil nil ->
     has_state nil req HeadersSending res nil
 | S_HeaderSending2: forall req res1 res2 s,
-    has_state nil req HeadersSending (Res_HeaderLine s :: res1) res2 ->
-    has_state nil req HeadersSending res1 (Res_HeaderLine s :: res2)
+    has_state nil req HeadersSending (Res_HeaderPart s :: res1) res2 ->
+    has_state nil req HeadersSending res1 (Res_HeaderPart s :: res2)
 | S_HeadersSent1: forall req res1 res2 s,
-    has_state nil req HeadersSending (Res_BodyLine s :: res1) res2 ->
-    has_state nil req HeadersSent (Res_BodyLine s :: res1) res2
+    has_state nil req HeadersSending (Res_BodyPart s :: res1) res2 ->
+    has_state nil req HeadersSent (Res_BodyPart s :: res1) res2
 | S_HeadersSent2: forall req res,
     has_state nil req HeadersSending nil res ->
     has_state nil req HeadersSent nil res
@@ -75,8 +75,8 @@ Inductive has_state : HttpRequest -> HttpRequest ->
     has_state nil req NormalBodyUnready res1 res2 ->
     has_state nil req NormalBodyReady res1 res2
 | S_NormalBodyReady2: forall req res1 res2 s,
-    has_state nil req NormalBodyReady (Res_BodyLine s :: res1) res2 ->
-    has_state nil req NormalBodyReady res1 (Res_BodyLine s :: res2)
+    has_state nil req NormalBodyReady (Res_BodyPart s :: res1) res2 ->
+    has_state nil req NormalBodyReady res1 (Res_BodyPart s :: res2)
 | S_FootersSent: forall req res,
     has_state nil req NormalBodyReady nil res ->
     has_state nil req FootersSent nil res
@@ -170,7 +170,7 @@ Proof with auto.
       destruct Hhs.
       * exfalso. simpl in H1. rewrite <- app_assoc in H1. simpl in H1.
         eapply body_before_header_response_not_well_formed. apply H1.
-      * simpl in H1. remember (rev res2 ++ Res_BodyLine s :: nil) as res'.
+      * simpl in H1. remember (rev res2 ++ Res_BodyPart s :: nil) as res'.
         exfalso. eapply nil_neq_app_cons. symmetry. apply H1.
     + exists NormalBodyReady...
 Qed.
@@ -206,7 +206,7 @@ Lemma close_after_finish : forall req res state,
     has_state nil req state nil res ->
     has_state nil req Closed nil res.
 Proof.
-  intros. remember nil as reqn. remember (@nil HttpResponseLine) as resn.
+  intros. remember nil as reqn. remember (@nil HttpResponsePart) as resn.
   assert (Hhs: has_state reqn req state resn res); auto.
   induction H0; subst; eauto; inversion H;
     try (repeat constructor; assumption);
