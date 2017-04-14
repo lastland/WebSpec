@@ -33,6 +33,9 @@ Inductive well_formed_request: HttpRequest -> Prop :=
 | wf_cons_broken_line : forall s req, well_formed_request req ->
                                  well_formed_request ((Req_BrokenLine s) :: req).
 
+Hint Constructors well_formed_request.
+
+
 (* A complete HTTP request must start with a `Req_InitialMessage`,
      followed by nothing or `Req_HeaderLine` and a list of request lines.
  *)
@@ -43,9 +46,28 @@ Inductive complete_request : HttpRequest -> Prop :=
     well_formed_request (Req_HeaderLine s1 :: req) ->
     complete_request (Req_InitialMessage s2 :: Req_HeaderLine s1 :: req).
 
-(** Some theorems about well formed/complete HTTP requests. **)
+Hint Constructors complete_request.
 
-Hint Constructors well_formed_request.
+(** The same definitions as above, but defined in functions. **)
+
+Definition not_initial_messgae (req: HttpRequestLine) : bool :=
+  match req with
+  | Req_InitialMessage _ => false
+  | _ => true
+  end.
+
+Definition no_initial_message (req : HttpRequest) : bool :=
+  forallb not_initial_messgae req.
+
+Definition is_complete_request (req : HttpRequest) : bool :=
+  match req with
+  | (Req_InitialMessage _ :: Req_HeaderLine _ :: rs) =>
+    no_initial_message rs
+  | (Req_InitialMessage _ :: nil) => true
+  | _ => false
+  end.
+
+(** Some theorems about well formed/complete HTTP requests. **)
 
 Lemma well_formed_request_inverse: forall line req,
     well_formed_request (line :: req) -> well_formed_request req.
@@ -85,4 +107,35 @@ Proof.
   intros. inversion H0; subst.
   - exfalso. apply H. reflexivity.
   - exists s1. exists req0. reflexivity.
+Qed.
+
+(** Proof that our inductive definitions and function definitions are equivalent.
+ **)
+Theorem well_formed_iff_no_initial_message : forall req,
+    well_formed_request req <-> no_initial_message req = true.
+Proof.
+  intro req. induction req as [| r rs].
+  - simpl. split; intro H; inversion H; auto.
+  - destruct r; split; destruct IHrs as [IHrs1 IHrs2];
+      intro H; inversion H; subst;
+        solve [apply IHrs1 in H1; rewrite <- H1;
+               simpl; unfold no_initial_message; auto
+              | apply IHrs2 in H1; auto ].
+Qed.
+
+Theorem complete_request_is_complete_request : forall req,
+    is_complete_request req = true <-> complete_request req.
+Proof.
+  intro req. destruct req as [| r rs].
+  - simpl. split; intro H; inversion H.
+  - destruct r.
+    + destruct rs as [| r' rs']; split; auto.
+      * destruct r'; simpl; intros; try solve by inversion.
+        constructor. constructor.
+        apply well_formed_iff_no_initial_message. auto.
+      * destruct r'; simpl; intros; try solve by inversion.
+        inversion H; subst. inversion H1; subst.
+        apply well_formed_iff_no_initial_message. auto.
+    + split; intro H; try solve by inversion.
+    + split; intro H; try solve by inversion.
 Qed.
