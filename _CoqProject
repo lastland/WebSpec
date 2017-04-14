@@ -5,3 +5,4 @@ HttpRequest.v
 HttpResponse.v
 State.v
 HasState.v
+Transition.v
