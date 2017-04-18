@@ -14,7 +14,8 @@ Definition genResponse (req: HttpRequest) : HttpResponse :=
 
 Definition Connection : Type := (State * HttpRequest * HttpResponse).
 
-Definition transition (c : Connection) (req : option HttpRequestLine) :
+Definition transition (f : HttpRequest -> HttpResponse)
+           (c : Connection) (req : option HttpRequestLine) :
   Connection * option HttpResponsePart :=
   let '(s, reqs, res) := c in
   match s with
@@ -51,7 +52,7 @@ Definition transition (c : Connection) (req : option HttpRequestLine) :
   | HeadersProcessed =>
     ((FootersReceived, reqs, res), None)
   | FootersReceived =>
-    ((HeadersSending, reqs, genResponse (rev reqs)), None)
+    ((HeadersSending, reqs, f (rev reqs)), None)
   | HeadersSending =>
     match res with
     | Res_HeaderPart _ as part :: res' =>
