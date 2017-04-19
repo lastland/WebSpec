@@ -6,3 +6,7 @@ HttpResponse.v
 State.v
 HasState.v
 Transition.v
+Resource.v
+HttpdInterface.v
+FileSystem.v
+FSResource.v
