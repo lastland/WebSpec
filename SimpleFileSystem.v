@@ -2,6 +2,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.EqNat.
 Require Import Coq.Arith.PeanoNat.
+Require Import Coq.omega.Omega.
 
 Require Import Utility.
 Require Import InvTactics.
@@ -267,7 +268,79 @@ Module SimpleFS : FileSystem.
       (forall f', In f' (streams afs) <-> In f' (streams afs')) /\
       (forall p', contents afs p' = contents afs' p').
   Proof.
-  Admitted.
+    intros. repeat split.
+    - unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread;
+        try solve [inversion H; omega].
+      destruct (beq_nat size 1) eqn:Hsize';
+        inversion H; try apply beq_nat_false in Hcount; omega.
+    - unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread; inversion H; simpl; auto.
+      destruct size; simpl; auto.
+      destruct size; simpl; auto.
+    - unfold abs_fs in H0; subst. simpl in H2.
+      destruct f; destruct (is_open fs) eqn:Hopen; simpl in H2.
+      + exfalso. apply H2. auto.
+      + unfold fread in H. rewrite Hopen in H.
+        destruct (beq_nat size 0); destruct (beq_nat count 0);
+          inversion H; auto.
+    - unfold abs_fs in H0; subst. simpl in H2.
+      destruct f; destruct (is_open fs) eqn:Hopen; simpl in H2.
+      + exfalso. apply H2. auto.
+      + unfold fread in H. rewrite Hopen in H.
+        destruct (beq_nat size 0); destruct (beq_nat count 0);
+          inversion H; auto.
+    - intros. unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread; inversion H; subst; auto.
+    - intros. destruct f; destruct f'; contradiction.
+    - rewrite H0 in H5. simpl in H5. unfold fsContents in H5.
+      rewrite H0 in H3. simpl in H3.
+      destruct (is_open fs); try solve by inversion.
+      inversion H3. subst. simpl in H5. inversion H5. simpl.
+      unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread; inversion H; simpl; omega.
+    - subst. simpl in H5. simpl in H3. simpl in H4.
+      destruct (is_open fs); try solve by inversion.
+      inversion H3. subst. unfold fsContents in H5. simpl in H5.
+      inversion H5. simpl.
+      unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread; inversion H; subst;
+          try (rewrite Hopen in H4);
+          try (inversion H4; simpl; try rewrite Hread; auto).
+    - unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread; inversion H; subst; auto.
+      unfold abs_fs. simpl. destruct f'. intro. auto.
+    - unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread; inversion H; subst; auto.
+      unfold abs_fs. simpl. destruct f'. intro. rewrite Hopen. auto.
+    - intros.
+      unfold fread in H.
+      destruct (beq_nat size 0) eqn:Hsize;
+        destruct (beq_nat count 0) eqn:Hcount;
+        destruct (is_open fs) eqn:Hopen;
+        destruct (is_read fs) eqn:Hread; inversion H; subst; auto.
+  Qed.
 
   Definition fclose (f : file) : FS bool :=
     fun fs => if (is_open fs) then
