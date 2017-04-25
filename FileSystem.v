@@ -2,6 +2,24 @@ Require Import Coq.Lists.List.
 Require Import Coq.Bool.Bool.
 Require Import Coq.Arith.EqNat.
 
+(** Only binary access modes -- this is only temporary. **)
+Inductive file_access_mode : Type :=
+| rb : file_access_mode
+| wb : file_access_mode
+| ab : file_access_mode.
+
+Inductive seek_set : Type :=
+| SeekSet : seek_set
+| SeekCur : seek_set
+| SeekEnd : seek_set.
+
+Definition expected_offset (origin : seek_set) (l e o : nat) : nat :=
+  match origin with
+  | SeekSet => o
+  | SeekCur => l + o
+  | SeekEnd => e + o
+  end.
+
 Module Type FileSystem.
   Parameter file_system : Type.
   Parameter initial_fs : file_system.
@@ -44,17 +62,6 @@ Module Type FileSystem.
              (forall fi, file_info afs f = Some fi ->
                     contents afs (p fi) <> None).
   
-  (** Only binary access modes -- this is only temporary. **)
-  Inductive file_access_mode : Type :=
-  | rb : file_access_mode
-  | wb : file_access_mode
-  | ab : file_access_mode.
-
-  Inductive seek_set : Type :=
-  | SeekSet : seek_set
-  | SeekCur : seek_set
-  | SeekEnd : seek_set.
-
   (** Functions related to file system.
       Here we only specify what we need in our web server. 
    **)
@@ -67,13 +74,6 @@ Module Type FileSystem.
 
   Parameter is_reg : file_stat -> bool.
   Parameter is_dir : file_stat -> bool.
-
-  Definition expected_offset (origin : seek_set) (l e o : nat) : nat :=
-    match origin with
-    | SeekSet => o
-    | SeekCur => l + o
-    | SeekEnd => e + o
-    end.
 
   (** Specifications for file operations with regards to abstract
       file system. Our web server does not write to file systems,
@@ -101,13 +101,14 @@ Module Type FileSystem.
       fileno f fs = (fd, fs') ->
       forall afs, afs = abs_fs fs ->
       forall afs', afs' = abs_fs fs' ->       
-      file_no afs' f = fd /\
+      (In f (streams afs) ->
+       file_no afs' f = fd /\
+       (file_no afs f <> None -> file_no afs f = fd)) /\
+      (~ In f (streams afs) -> fd = None) /\
       (forall f', f' <> f ->
              file_no afs' f <> file_no afs' f' /\
              file_no afs f' = file_no afs' f') /\
       (forall f', file_info afs f' = file_info afs' f') /\
-      (* call `file_no` twice on the same file stream gives the same fd. *)
-      (file_no afs f <> None -> file_no afs f = fd) /\
       (forall f', In f' (streams afs) <-> In f' (streams afs')) /\
       (forall p', contents afs p' = contents afs' p').
 
@@ -160,7 +161,8 @@ Module Type FileSystem.
       file_no afs f = Some fd ->
       fstat fd fs = st ->
       forall fi, file_info afs f = Some fi ->
-      exists st', st = Some st' /\ stat fi = abs_fstat st'.
+      forall st', st = Some st' ->
+      stat fi = abs_fstat st'.
 
   Axiom is_reg_spec : forall st,
       is_reg st = isReg (abs_fstat st).
