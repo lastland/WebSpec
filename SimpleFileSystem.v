@@ -286,7 +286,14 @@ Module SimpleFS : FileSystem.
              In f' (streams afs) = In f' (streams afs')) /\
       (forall p', contents afs p' = contents afs' p').
   Proof.
-  Admitted.
+    intros. unfold fclose in H.
+    destruct (is_open fs) eqn:Hopen; inversion H; repeat split;
+      try (unfold abs_fs in H0; unfold abs_fs in H1; subst; simpl);
+      try rewrite Hopen; auto.
+    - destruct f. intro. exfalso. apply H0. simpl. auto.
+    - destruct f; destruct f'. exfalso. apply H2. reflexivity.
+    - destruct f; destruct f'. exfalso. apply H2. reflexivity.
+  Qed.
 
   Definition fstat (fd : file_handle) (fs : file_system) : option file_stat :=
     if (beq_nat fd 1) then
