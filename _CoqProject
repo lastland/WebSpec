@@ -9,4 +9,5 @@ Transition.v
 Resource.v
 HttpdInterface.v
 FileSystem.v
+SimpleFileSystem.v
 FSResource.v
