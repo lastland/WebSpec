@@ -15,7 +15,7 @@ Module SimpleFS : FileSystem.
   Definition file_handle : Type := nat.
   Definition metadata : Type := nat.
 
-  Record file_stat : Type :=
+  Record file_stat' : Type :=
     mkStat { is_reg : bool;
            is_dir : bool;
            is_chr : bool;
@@ -25,6 +25,8 @@ Module SimpleFS : FileSystem.
            is_sock : bool
            }.
 
+  Definition file_stat : Type := file_stat'.
+
   Definition file_name : string := "file".
 
   Definition fsContents (p : path) : option (list bool) :=
@@ -32,19 +34,21 @@ Module SimpleFS : FileSystem.
       Some (true :: nil)
     else None.
     
-  Record file_system : Type :=
+  Record file_system' : Type :=
     mkFS { is_open : bool;
            is_read : bool;
            has_fd : bool;
            the_stat : file_stat
          }.
 
+  Definition file_system : Type := file_system'.
+
   Definition init_file_stat : file_stat :=
     mkStat true false false false false false false.
   Definition initial_fs : file_system :=
     mkFS false false false init_file_stat.
 
-    Record abstract_file_stat : Type :=
+  Record abstract_file_stat : Type :=
     abs_stat { isReg : bool;
                isDir : bool;
                isChr : bool;
