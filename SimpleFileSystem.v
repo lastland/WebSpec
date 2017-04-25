@@ -235,5 +235,89 @@ Module SimpleFS : FileSystem.
       subst. simpl in H2. inversion H2. simpl.
       rewrite <- plus_n_Sm. auto.
   Qed.
-  
+
+  Definition fread (f : file) (size : nat) (count : nat) : FS (list (list bool) * nat) :=
+    fun fs => if (beq_nat size 0) then
+             ((nil, 0), fs)
+           else if (beq_nat count 0) then
+                  ((nil, 0), fs)
+                else if (is_open fs) then
+                       if (is_read fs) then
+                         ((nil, 0), fs)
+                       else
+                         (((true::nil)::nil, if (beq_nat size 1) then 1 else 0),
+                          mkFS true true (has_fd fs) (the_stat fs))
+                     else ((nil, 0), fs).
+
+  Theorem fread_spec : forall f size count fs fs' buf r,
+      fread f size count fs = ((buf, r), fs') ->
+      forall afs, afs = abs_fs fs ->
+      forall afs', afs' = abs_fs fs' ->
+      (r <= count) /\
+      (length (filter (fun b => beq_nat (length b) size) buf) = r) /\
+      (~ In f (streams afs) -> buf = nil /\ r = 0) /\
+      (forall f', file_no afs f' = file_no afs' f') /\
+      (forall f', f <> f' ->
+             file_info afs f' = file_info afs' f') /\
+      (forall l, l = fold_left (fun x y => x + length y) buf 0 ->
+       forall fi,  file_info afs  f = Some fi  ->
+       forall fi', file_info afs' f = Some fi' ->
+       forall s, contents afs (p fi) = Some s ->
+            l <= (length s - offset fi) /\ offset fi' = offset fi + l) /\
+      (forall f', In f' (streams afs) <-> In f' (streams afs')) /\
+      (forall p', contents afs p' = contents afs' p').
+  Proof.
+  Admitted.
+
+  Definition fclose (f : file) : FS bool :=
+    fun fs => if (is_open fs) then
+             (true, mkFS false false (has_fd fs) (the_stat fs))
+           else (false, fs).
+
+  Theorem fclose_spec : forall f fs fs' b,
+      fclose f fs = (b, fs') ->
+      forall afs, afs = abs_fs fs ->
+      forall afs', afs' = abs_fs fs' ->
+      (~ In f (streams afs) -> b = false) /\
+      ~ In f (streams afs') /\
+      (forall f', file_no afs f' = file_no afs' f') /\
+      (forall f', f <> f' ->
+             file_info afs f' = file_info afs' f' /\
+             In f' (streams afs) = In f' (streams afs')) /\
+      (forall p', contents afs p' = contents afs' p').
+  Proof.
+  Admitted.
+
+  Definition fstat (fd : file_handle) (fs : file_system) : option file_stat :=
+    if (beq_nat fd 1) then
+      Some init_file_stat
+    else None.
+
+  Theorem fstat_spec : forall f fd fs st,
+      forall afs, abs_fs fs = afs ->
+      file_no afs f = Some fd ->
+      fstat fd fs = st ->
+      forall fi, file_info afs f = Some fi ->
+      forall st', st = Some st' ->
+      stat fi = abs_fstat st'.
+  Proof.
+    intros.
+    destruct (beq_nat fd 1) eqn:Heq; subst;
+      try (unfold fstat in H3; rewrite Heq in H3; inversion H3); subst.
+    - inversion H2. destruct (is_open fs); inversion H1.
+      simpl. unfold init_abs_fstat. reflexivity.
+  Qed.
+
+  Theorem is_reg_spec : forall st,
+      is_reg st = isReg (abs_fstat st).
+  Proof.
+    intros. reflexivity.
+  Qed.
+
+  Theorem is_dir_spec : forall st,
+      is_dir st = isDir (abs_fstat st).
+  Proof.
+    intros. reflexivity.
+  Qed.
+
 End SimpleFS.

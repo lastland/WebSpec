@@ -101,14 +101,14 @@ Module Type FileSystem.
       fileno f fs = (fd, fs') ->
       forall afs, afs = abs_fs fs ->
       forall afs', afs' = abs_fs fs' ->       
-      (In f (streams afs) -> file_no afs' f = fd) /\
+      (In f (streams afs) ->
+       file_no afs' f = fd /\
+       (file_no afs f <> None -> file_no afs f = fd)) /\
       (~ In f (streams afs) -> fd = None) /\
       (forall f', f' <> f ->
              file_no afs' f <> file_no afs' f' /\
              file_no afs f' = file_no afs' f') /\
       (forall f', file_info afs f' = file_info afs' f') /\
-      (* call `file_no` twice on the same file stream gives the same fd. *)
-      (file_no afs f <> None -> file_no afs f = fd) /\
       (forall f', In f' (streams afs) <-> In f' (streams afs')) /\
       (forall p', contents afs p' = contents afs' p').
 
@@ -161,7 +161,8 @@ Module Type FileSystem.
       file_no afs f = Some fd ->
       fstat fd fs = st ->
       forall fi, file_info afs f = Some fi ->
-      exists st', st = Some st' /\ stat fi = abs_fstat st'.
+      forall st', st = Some st' ->
+      stat fi = abs_fstat st'.
 
   Axiom is_reg_spec : forall st,
       is_reg st = isReg (abs_fstat st).
