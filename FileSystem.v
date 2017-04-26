@@ -43,24 +43,31 @@ Module Type FileSystem.
                offset : nat;
                stat : abstract_file_stat
              }.
-
+  (*
   Record abstract_file_system : Type :=
     abs { contents : path -> option (list bool);
           streams : list file;
           file_info : file -> option abstract_file_metainfo;
           file_no : file -> option file_handle
         }.
-
+  *)
+  Parameter contents  : file_system -> path -> option (list bool).
+  Parameter streams   : file_system -> list file.
+  Parameter file_info : file_system -> file -> option abstract_file_metainfo.
+  Parameter file_no   : file_system -> file -> option file_handle.
+  
   Definition FS ( A : Type ) := file_system -> (A * file_system).
 
-  Parameter abs_fs : file_system -> abstract_file_system.
+  (* Parameter abs_fs : file_system -> abstract_file_system. *)
   Parameter abs_fstat : file_stat -> abstract_file_stat.
   
+  (*
   Axiom abstract_file_system_spec : forall fs f,
       forall afs, afs = abs_fs fs ->
              (In f (streams afs) <-> file_info afs f <> None) /\
              (forall fi, file_info afs f = Some fi ->
                     contents afs (p fi) <> None).
+  *)
   
   (** Functions related to file system.
       Here we only specify what we need in our web server. 
@@ -82,20 +89,18 @@ Module Type FileSystem.
   
   Axiom fopen_spec : forall p m f fs fs',
       fopen p m fs = (f, fs') ->
-      forall afs, afs = abs_fs fs ->
-      forall afs', afs' = abs_fs fs' ->
-      (m = rb -> contents afs p = None -> f = None) /\
+      (m = rb -> contents fs p = None -> f = None) /\
       (m = wb \/ m = ab ->
        forall f', f = Some f' ->
-             contents afs' p <> None) /\
+             contents fs' p <> None) /\
       (forall f', f = Some f' ->
-             In f' (streams afs')) /\
-      (forall f', file_no afs f' = file_no afs' f') /\
+             In f' (streams fs')) /\
+      (forall f', file_no fs f' = file_no fs' f') /\
       (forall f', f <> Some f' ->
-             file_info afs f' = file_info afs' f' /\
-             In f' (streams afs) = In f' (streams afs')) /\
+             file_info fs f' = file_info fs' f' /\
+             In f' (streams fs) = In f' (streams fs')) /\
       (forall p', p <> p' \/ m = rb ->
-             contents afs p' = contents afs' p').
+             contents fs p' = contents fs' p').
 
   Axiom fileno_spec : forall f fs fs' fd,
       fileno f fs = (fd, fs') ->
