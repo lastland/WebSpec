@@ -43,14 +43,7 @@ Module Type FileSystem.
                offset : nat;
                stat : abstract_file_stat
              }.
-  (*
-  Record abstract_file_system : Type :=
-    abs { contents : path -> option (list bool);
-          streams : list file;
-          file_info : file -> option abstract_file_metainfo;
-          file_no : file -> option file_handle
-        }.
-  *)
+
   Parameter contents  : file_system -> path -> option (list bool).
   Parameter streams   : file_system -> list file.
   Parameter file_info : file_system -> file -> option abstract_file_metainfo.
@@ -58,7 +51,6 @@ Module Type FileSystem.
   
   Definition FS ( A : Type ) := file_system -> (A * file_system).
 
-  (* Parameter abs_fs : file_system -> abstract_file_system. *)
   Parameter abs_fstat : file_stat -> abstract_file_stat.
   
   (*
@@ -104,68 +96,59 @@ Module Type FileSystem.
 
   Axiom fileno_spec : forall f fs fs' fd,
       fileno f fs = (fd, fs') ->
-      forall afs, afs = abs_fs fs ->
-      forall afs', afs' = abs_fs fs' ->       
-      (In f (streams afs) ->
-       file_no afs' f = fd /\
-       (file_no afs f <> None -> file_no afs f = fd)) /\
-      (~ In f (streams afs) -> fd = None) /\
+      (In f (streams fs) ->
+       file_no fs' f = fd /\
+       (file_no fs f <> None -> file_no fs f = fd)) /\
+      (~ In f (streams fs) -> fd = None) /\
       (forall f', f' <> f ->
-             file_no afs' f <> file_no afs' f' /\
-             file_no afs f' = file_no afs' f') /\
-      (forall f', file_info afs f' = file_info afs' f') /\
-      (forall f', In f' (streams afs) <-> In f' (streams afs')) /\
-      (forall p', contents afs p' = contents afs' p').
+             file_no fs' f <> file_no fs' f' /\
+             file_no fs f' = file_no fs' f') /\
+      (forall f', file_info fs f' = file_info fs' f') /\
+      (forall f', In f' (streams fs) <-> In f' (streams fs')) /\
+      (forall p', contents fs p' = contents fs' p').
 
   Axiom fseek_spec : forall f off origin fs fs' b,
       fseek f off origin fs = (b, fs') ->
-      forall afs, afs = abs_fs fs ->
-      forall afs', afs' = abs_fs fs' ->       
-      (In f (streams afs) <-> b = true) /\
-      (forall f', file_no afs f' = file_no afs' f') /\
-      (forall f', f <> f' -> file_info afs f' = file_info afs' f') /\
-      (forall fi,  file_info afs  f = Some fi  ->
-       forall fi', file_info afs' f = Some fi' ->
-       forall s, contents afs (p fi) = Some s ->
+      (In f (streams fs) <-> b = true) /\
+      (forall f', file_no fs f' = file_no fs' f') /\
+      (forall f', f <> f' -> file_info fs f' = file_info fs' f') /\
+      (forall fi,  file_info fs  f = Some fi  ->
+       forall fi', file_info fs' f = Some fi' ->
+       forall s, contents fs (p fi) = Some s ->
             offset fi' = min (length s) (expected_offset origin (offset fi) (length s) off)) /\
-      (forall f', In f' (streams afs) <-> In f' (streams afs')) /\
-      (forall p', contents afs p' = contents afs' p').
+      (forall f', In f' (streams fs) <-> In f' (streams fs')) /\
+      (forall p', contents fs p' = contents fs' p').
 
   Axiom fread_spec : forall f size count fs fs' buf r,
       fread f size count fs = ((buf, r), fs') ->
-      forall afs, afs = abs_fs fs ->
-      forall afs', afs' = abs_fs fs' ->
       (r <= count) /\
       (length (filter (fun b => beq_nat (length b) size) buf) = r) /\
-      (~ In f (streams afs) -> buf = nil /\ r = 0) /\
-      (forall f', file_no afs f' = file_no afs' f') /\
+      (~ In f (streams fs) -> buf = nil /\ r = 0) /\
+      (forall f', file_no fs f' = file_no fs' f') /\
       (forall f', f <> f' ->
-             file_info afs f' = file_info afs' f') /\
+             file_info fs f' = file_info fs' f') /\
       (forall l, l = fold_left (fun x y => x + length y) buf 0 ->
-       forall fi,  file_info afs  f = Some fi  ->
-       forall fi', file_info afs' f = Some fi' ->
-       forall s, contents afs (p fi) = Some s ->
+       forall fi,  file_info fs  f = Some fi  ->
+       forall fi', file_info fs' f = Some fi' ->
+       forall s, contents fs (p fi) = Some s ->
             l <= (length s - offset fi) /\ offset fi' = offset fi + l) /\
-      (forall f', In f' (streams afs) <-> In f' (streams afs')) /\
-      (forall p', contents afs p' = contents afs' p').
+      (forall f', In f' (streams fs) <-> In f' (streams fs')) /\
+      (forall p', contents fs p' = contents fs' p').
 
   Axiom fclose_spec : forall f fs fs' b,
       fclose f fs = (b, fs') ->
-      forall afs, afs = abs_fs fs ->
-      forall afs', afs' = abs_fs fs' ->
-      (~ In f (streams afs) -> b = false) /\
-      ~ In f (streams afs') /\
-      (forall f', file_no afs f' = file_no afs' f') /\
+      (~ In f (streams fs) -> b = false) /\
+      ~ In f (streams fs') /\
+      (forall f', file_no fs f' = file_no fs' f') /\
       (forall f', f <> f' ->
-             file_info afs f' = file_info afs' f' /\
-             In f' (streams afs) = In f' (streams afs')) /\
-      (forall p', contents afs p' = contents afs' p').
+             file_info fs f' = file_info fs' f' /\
+             In f' (streams fs) = In f' (streams fs')) /\
+      (forall p', contents fs p' = contents fs' p').
 
   Axiom fstat_spec : forall f fd fs st,
-      forall afs, abs_fs fs = afs ->
-      file_no afs f = Some fd ->
+      file_no fs f = Some fd ->
       fstat fd fs = st ->
-      forall fi, file_info afs f = Some fi ->
+      forall fi, file_info fs f = Some fi ->
       forall st', st = Some st' ->
       stat fi = abs_fstat st'.
 
