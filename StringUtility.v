@@ -2,12 +2,16 @@ Require Import Coq.Strings.String.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Arith.Arith.
 Require Import Coq.Arith.EqNat.
-Require Import Coq.Lists.List.
+Require Import Coq.omega.Omega.
 
-Lemma nil_neq_app_cons : forall { A: Type } ( x : A ) l1 l2,
-    nil <> l1 ++ x :: l2.
+Lemma substring_length : forall n size s,
+    length (substring n size s) <= size.
 Proof.
-  intros. induction l1; simpl; intro; inversion H.
+  intros. generalize dependent n. generalize dependent size.
+  induction s; intros.
+  - destruct size; destruct n; simpl; omega.
+  - destruct size; induction n; simpl; try omega; eauto.
+    apply le_n_S. auto.
 Qed.
 
 Fixpoint strcmp (a : string) (b : string) : bool :=
@@ -44,6 +48,8 @@ Definition to_upper (c: ascii) : ascii :=
   if is_lower c then
     ascii_of_nat ((nat_of_ascii c) - 32)
   else c.
+
+Require Import Coq.Lists.List.
 
 Definition to_lower_word (s : list ascii) : list ascii :=
   map to_lower s.

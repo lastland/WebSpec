@@ -4,7 +4,7 @@ Require Import Coq.Arith.EqNat.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.omega.Omega.
 
-Require Import Utility.
+Require Import StringUtility.
 Require Import InvTactics.
 Require Import FileSystem.
 

@@ -1,7 +1,7 @@
-Require Import List.
-Require Import String.
+Require Import Coq.Lists.List.
+Require Import Coq.Strings.String.
 
-Require Import Utility.
+Require Import ListUtility.
 Require Import InvTactics.
 Require Import HttpRequest.
 Require Import HttpResponse.

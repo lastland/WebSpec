@@ -1,8 +1,8 @@
-Require Import List.
-Require Import String.
+Require Import Coq.Lists.List.
+Require Import Coq.Strings.String.
 
 Require Import InvTactics.
-Require Import Utility.
+Require Import ListUtility.
 
 (** Definitions of HTTP response. **)
 
