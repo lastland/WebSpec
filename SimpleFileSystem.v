@@ -4,11 +4,12 @@ Require Import Coq.Arith.EqNat.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.omega.Omega.
 
+Require Import Monad.
 Require Import StringUtility.
 Require Import InvTactics.
 Require Import FileSystem.
 
-Module SimpleFS : FileSystem.
+Module SimpleFS : FileSystem with Definition path := string.
 
   Definition path : Type := string.
   Definition file_content : Type := bool.
@@ -85,6 +86,14 @@ Module SimpleFS : FileSystem.
     if (has_fd fs) then Some 1 else None.
   
   Definition FS ( A : Type ) := file_system -> (A * file_system).
+  Instance FS_Monad : Monad FS :=
+    { ret A x := fun fs => (x, fs) ;
+      bind A B f a := fun fs =>
+                    match a fs with
+                    | (b, fs') => f b fs'
+                    end }.
+  Definition get : FS file_system :=
+    fun fs => (fs, fs).
 
   Hint Unfold contents.
   Hint Unfold streams.

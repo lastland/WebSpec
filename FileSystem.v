@@ -2,6 +2,8 @@ Require Import Coq.Lists.List.
 Require Import Coq.Bool.Bool.
 Require Import Coq.Arith.EqNat.
 
+Require Import Monad.
+
 (** Only binary access modes -- this is only temporary. **)
 Inductive file_access_mode : Type :=
 | rb : file_access_mode
@@ -50,6 +52,15 @@ Module Type FileSystem.
   Parameter file_no   : file_system -> file -> option file_handle.
   
   Definition FS ( A : Type ) := file_system -> (A * file_system).
+  Instance FS_Monad : Monad FS :=
+    { ret A x := fun fs => (x, fs) ;
+      bind A B f a := fun fs =>
+                    match a fs with
+                    | (b, fs') => f b fs'
+                    end ;
+    }.
+  Definition get : FS file_system :=
+    fun fs => (fs, fs).
 
   Parameter abs_fstat : file_stat -> abstract_file_stat.
   

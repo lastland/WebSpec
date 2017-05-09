@@ -2,7 +2,8 @@ Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
 Require Import Coq.omega.Omega.
 
-
+Require Import Monad.
+Require Import InvTactics.
 Require Import Buffer.
 Require Import StringUtility.
 Require Import Resource.
@@ -13,7 +14,7 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
 
   (** Callbacks. **)
   Definition contentReaderCallback : Type :=
-    res.class -> nat -> nat -> buffer (RS bool).
+    res.class -> nat -> nat -> string -> RS (nat * string).
 
   Definition contentReaderFreeCallback : Type :=
     res.class -> RS unit.
@@ -30,20 +31,34 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
   Definition response : Type := _response.
   Definition daemon : Type := list (connection * nat * response).
   Definition DM ( A : Type ) := daemon -> (A * daemon).
+  Instance DM_Monad : Monad DM :=
+    { ret A x := fun d => (x, d);
+      bind A B f x := fun d => match x d with
+                            | (y, d') => f y d'
+                            end }.
 
   (** Httpd interfaces. **)
   Definition create_response_from_buffer (size: nat) (mode: responseMemoryMode) :
-    buffer (DM (option response)) :=
-    fun buf => ((fun d => (Some (mkRes (Some (substring 0 size buf)) None None None),
-                     d)), buf).
+    string -> DM (option response * string) :=
+    fun buf d => ((Some (mkRes (Some (substring 0 size buf)) None None None),
+                buf), d).
 
   Definition create_response_from_callback (size: nat) (blk_size: nat)
              (crc: contentReaderCallback) (r: res.resource)
              (crfc: contentReaderFreeCallback) : DM (option response) :=
     fun d => (Some (mkRes None (Some crc) (Some crfc) (Some r)), d).
 
-  Definition queue_response (conn: connection) (code: nat) (res: response) : DM bool :=
-    fun d => (true, (conn, code, res) :: d).
+  Definition queue_response (conn: option connection)
+             (code: nat) (res: option response) : DM bool :=
+    fun d => match conn with
+          | None => (false, d)
+          | Some c =>
+            match res with
+            | None => (false, d)
+            | Some r =>
+              (true, (c, code, r) :: d)
+            end
+          end.
 
   Hint Unfold create_response_from_buffer.
   Hint Unfold create_response_from_callback.
@@ -67,9 +82,8 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
 
   (** Specifications. **)
   Theorem create_response_from_buffer_spec :
-    forall size mode buf d rd buf' r d',
-      create_response_from_buffer size mode buf = (rd, buf') ->
-      rd d = (r, d') ->
+    forall size mode buf d buf' r d',
+      create_response_from_buffer size mode buf d = ((r, buf'), d') ->
       response_queue d = response_queue d' /\
       buf = buf' /\
       (forall res, r = Some res ->
@@ -78,10 +92,9 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
        substring 0 size buf = b).
   Proof.
     autounfold. intros.
-    repeat split; inversion H; subst;
-      simpl in *; inversion H0; auto.
+    repeat split; inversion H; subst; auto.
     intros. exists (substring 0 size buf').
-    inversion H1; simpl; repeat split; auto.
+    inversion H0; simpl; repeat split; auto.
     apply substring_length.
   Qed.
 
@@ -102,9 +115,16 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
     forall conn status res b d d',
       queue_response conn status res d = (b, d') ->
       (forall r, In r (response_queue d) -> In r (response_queue d')) /\
-      In (conn, status, res) (response_queue d').
+      (forall c r, conn = Some c -> res = Some r ->
+              In (c, status, r) (response_queue d')).
   Proof.
-    autounfold. intros. inversion H. split; simpl; auto.
+    autounfold. intros. inversion H.
+    split; intros; destruct conn; destruct res; inversion H; simpl; subst.
+    all: repeat match goal with
+               [ H : Some ?a = Some ?b |- _ ] =>
+               inversion H; clear H end.
+    all: auto.
+    all: try solve by inversion.
   Qed.
     
 End SimpleHttpd.
