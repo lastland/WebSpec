@@ -32,7 +32,7 @@ Module Type Httpd (res: Resource).
   Parameter create_response_from_buffer :
     nat -> responseMemoryMode -> string -> DM (option response * string).
   Parameter create_response_from_callback :
-    nat -> nat -> contentReaderCallback -> res.resource ->
+    nat -> nat -> contentReaderCallback -> res.class ->
     contentReaderFreeCallback -> DM (option response).
   Parameter queue_response :
     option connection -> nat -> option response -> DM bool.
@@ -42,7 +42,7 @@ Module Type Httpd (res: Resource).
   Parameter response_content : response -> option string.
   Parameter response_crc : response -> option contentReaderCallback.
   Parameter response_crfc : response -> option contentReaderFreeCallback.
-  Parameter response_crc_cls : response -> option res.resource.
+  Parameter response_crc_cls : response -> option res.class.
 
   (** Specifications. **)
   Axiom create_response_from_buffer_spec :

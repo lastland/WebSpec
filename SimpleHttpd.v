@@ -24,7 +24,7 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
                           content : option string;
                           crc : option contentReaderCallback;
                           crfc : option contentReaderFreeCallback;
-                          crc_cls : option res.resource
+                          crc_cls : option res.class
                         }.
   
   Definition connection : Type := nat.
@@ -44,7 +44,7 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
                 buf), d).
 
   Definition create_response_from_callback (size: nat) (blk_size: nat)
-             (crc: contentReaderCallback) (r: res.resource)
+             (crc: contentReaderCallback) (r: res.class)
              (crfc: contentReaderFreeCallback) : DM (option response) :=
     fun d => (Some (mkRes None (Some crc) (Some crfc) (Some r)), d).
 
@@ -72,7 +72,7 @@ Module SimpleHttpd (res: Resource) : Httpd (res).
   Definition response_crfc (r: response) :
     option contentReaderFreeCallback := crfc r.
   Definition response_crc_cls (r: response) :
-    option res.resource := crc_cls r.
+    option res.class := crc_cls r.
 
   Hint Unfold response_queue.
   Hint Unfold response_content.
